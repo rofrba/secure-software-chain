@@ -228,13 +228,13 @@ Ahroa vamos a crear una secret con nuestra autenticación a la registry, para po
 
 ~~~ Bash
 
-kubectl create secret generic regcred --from-file=.docker/config.json -n test
+kubectl create secret generic regcred --from-file=.docker/config.json
 ~~~
 
 Por último, en caso de que hayamos asignado una password a nuestra llave privada de cosign, generamos una secret para almacenar dicho valor
 
 ~~~ Bash
-kubectl create secret generic key-pwd --from-literal=password=qwe123 -n test 
+kubectl create secret generic key-pwd --from-literal=password=qwe123
 ~~~
 
 
@@ -255,20 +255,20 @@ kubectl apply -f task-sign-image.yaml
 Para poder realizar pruebas, vamos a crear un Pipeline, que contiene la ejecución de las tres tasks generadas previamente. 
 
 ~~~ Bash
-kubectl apply -f pipeline.yaml -n test
+kubectl apply -f pipeline.yaml
 ~~~ 
 
 Por último, vamos a instanciar el pipeline, mediante el objeto pipeline-run. En este objeto, instanciamos los parámetros faltantes del Pipeline para customizar su ejecución.
 
 ~~~Bash
 
-kubectl create -f pipeline-run.yaml -n test
+kubectl create -f pipeline-run.yaml
 ~~~
 
 Para monitorear la ejecución del pipeline, podemos utilizar los siguientes comandos
 ~~~ Bash
-tkn pr list -n test
-tkn pr logs <pr-name> -n test -f
+tkn pr list
+tkn pr logs <pr-name> -f
 ~~~
 
 
