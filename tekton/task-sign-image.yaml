@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: sign-image-cosign
+spec:
+  params:
+    - name: image-to-sign
+      description: The full image name (including tag) to sign.
+      type: string
+    - name: cosign-key-secret-pwd
+      type: string
+      default: key-pwd
+    - name: cosign-key-secret
+      description: The name of the Kubernetes Secret holding the Cosign private key.
+      type: string
+      default: cosign-key
+  steps:
+    - name: sign-image
+      image: quay.io/ralvarez1/cosign:latest
+      env:
+        - name: COSIGN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosign-key-secret-pwd)
+              key: password
+      script: |
+        #!/usr/bin/env sh
+        set -euo pipefail
+        
+        cp /var/run/secrets/tekton.dev/cosign-key/cosign.key cosign.key
+        
+        cosign sign -y --key cosign.key $(params.image-to-sign)
+      volumeMounts:
+        - name: cosign-key-vol
+          mountPath: /var/run/secrets/tekton.dev/cosign-key
+          readOnly: true
+        - name: docker-config
+          mountPath: /root/.docker
+  volumes:
+    - name: cosign-key-vol
+      secret:
+        secretName: $(params.cosign-key-secret)
+    - name: docker-config
+      secret:
+        secretName: regcred

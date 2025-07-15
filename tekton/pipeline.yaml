@@ -1,0 +1,74 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: image-signing-pipeline
+spec:
+  params:
+    - name: app-name
+      description: The name of the application.
+      type: string
+    - name: git-url
+      description: The URL of the git repository.
+      type: string
+    - name: git-revision
+      description: The git revision (branch, tag, or commit SHA).
+      type: string
+      default: main
+    - name: image-tag
+      description: The tag for the image (e.g., latest, a version).
+      type: string
+    - name: dockerfile-path
+      description: The path to the Dockerfile in the repository.
+      type: string
+      default: Dockerfile
+    - name: context-path
+      description: The build context path in the repository.
+      type: string
+      default: .
+    - name: registry-url
+      type: string
+  workspaces:
+    - name: shared-workspace
+      description: A workspace for sharing source code between tasks.
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: subdirectory
+          value: code
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    - name: build-image-task
+      taskRef:
+        name: build-image
+      runAfter:
+        - fetch-source
+      params:
+        - name: image-name
+          value: $(params.registry-url)/$(params.app-name):$(params.image-tag)
+        - name: dockerfile-path
+          value: code/$(params.dockerfile-path)
+        - name: context-path
+          value: code/$(params.context-path)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
+    - name: sign-image-task
+      taskRef:
+        name: sign-image-cosign
+      runAfter:
+        - build-image-task
+      params:
+        - name: image-to-sign
+          value: $(params.registry-url)/$(params.app-name):$(params.image-tag) 
+
+
+    

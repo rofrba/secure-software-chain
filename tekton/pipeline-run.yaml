@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: app-signing-run-
+spec:
+  pipelineRef:
+    name: image-signing-pipeline
+  params:
+    - name: app-name
+      value: nginx-signed-pipeline 
+    - name: git-url
+      value: https://github.com/rofrba/secure-software-chain.git 
+    - name: image-tag
+      value: v2.0
+    - name: dockerfile-path
+      value: files/Dockerfile
+    - name: context-path
+      value: files
+    - name: registry-url
+      value: quay.io/ralvarez1
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

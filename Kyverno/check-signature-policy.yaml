@@ -18,6 +18,5 @@ spec:
       - image: "quay.io/ralvarez1/*"
         key: |-
           -----BEGIN PUBLIC KEY-----
-          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEzbs2sV3+R4aLBaPHm7r2wE/Jl+yW
-          oDfxFsnHlw+vHUJUGO5eJ3hfiryfkUiFG6xtdrYl6wqNGlL3ZaAkwySXYg==
+          YOUR_PUBLIC_KEY
           -----END PUBLIC KEY-----

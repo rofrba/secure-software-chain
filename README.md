@@ -205,3 +205,105 @@ policy check "check-image" (rule "check-image"):
 
 
 ### Próximos pasos
+
+### Integración con pipelines CI/CD 
+
+#### Tekton
+
+Primero, aseguremos la instalación de Tekton Pipelines en nuestro cluster. Esto nos proporciona la infraestructura necesaria para ejecutar nuestros flujos de trabajo de CI/CD.
+
+~~~ Bash
+kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+~~~
+
+Para que nuestro pipeline funcione de forma segura y acceda a recursos privados, necesitamos almacenar ciertas credentiales en secrets.
+
+Primero, creamos un secreto para guardar nuestra __clave privada de cosign.__ Esta clave es fundamental para firmar nuestras imágenes. (cosign.key debe existir previamente, generada con el comando cosign generate-key-pair)
+
+~~~ Bash
+kubectl create secret generic cosign-key --from-file=cosign.key
+~~~
+
+Ahroa vamos a crear una secret con nuestra autenticación a la registry, para poder realizar push de artefactos
+
+~~~ Bash
+
+kubectl create secret generic regcred --from-file=.docker/config.json -n test
+~~~
+
+Por último, en caso de que hayamos asignado una password a nuestra llave privada de cosign, generamos una secret para almacenar dicho valor
+
+~~~ Bash
+kubectl create secret generic key-pwd --from-literal=password=qwe123 -n test 
+~~~
+
+
+##### Tekton Task 
+
+En este ejemplo, vamos a utilizar 3 task, por un lado __git-clone__ para obtener el código de nuestra aplicación, seguido de __build-image__ para poder buildear y pushear nuestra imagen, para finalizar, crearemos la task __sign-image-cosign__ que realiza la firma de la imagen, y sube el artefacto .sig a la registry.
+
+~~~ Bash
+kubectl apply -f task-git-clone.yaml
+
+kubectl apply -f task-build-image.yaml 
+
+kubectl apply -f task-sign-image.yaml
+~~~ 
+
+##### Tekton Pipeline
+
+Para poder realizar pruebas, vamos a crear un Pipeline, que contiene la ejecución de las tres tasks generadas previamente. 
+
+~~~ Bash
+kubectl apply -f pipeline.yaml -n test
+~~~ 
+
+Por último, vamos a instanciar el pipeline, mediante el objeto pipeline-run. En este objeto, instanciamos los parámetros faltantes del Pipeline para customizar su ejecución.
+
+~~~Bash
+
+kubectl create -f pipeline-run.yaml -n test
+~~~
+
+Para monitorear la ejecución del pipeline, podemos utilizar los siguientes comandos
+~~~ Bash
+tkn pr list -n test
+tkn pr logs <pr-name> -n test -f
+~~~
+
+
+
+#### EXTRA
+
+En mi caso, el entorno de laboratorio minikube tiene arquitectura arm64, tuve que tener algunas consideraciones:
+
+- El comando para iniciar el cluster recomendado es:
+~~~ Bash
+minikube start --driver=podman --container-runtime=cri-o --network-plugin=cni
+~~~
+
+- Una vez iniciado el cluster, fue necesario cambiar la resolución de DNS
+~~~Bash
+kubectl edit configmap coredns -n kube-system
+~~~
+~~~yaml
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        log
+        errors
+        ...
+        forward . 8.8.8.8 8.8.4.4 {
+           max_concurrent 1000
+        }
+        ...
+    }
+kind: ConfigMap
+~~~
+
+
+- La Task para cosign tiene una adaptación para su ejecución. 
+~~~ Bash
+podman build --platform linux/arm64 -t your-registry/cosign:arm64 -f cosign/Containerfile cosign
+~~~

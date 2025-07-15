@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-image
+spec:
+  params:
+    - name: image-name
+      description: The name of the image to build.
+      type: string
+    - name: dockerfile-path
+      description: The path to the Dockerfile.
+      type: string
+      default: ./Dockerfile
+    - name: context-path
+      description: The build context path.
+      type: string
+      default: .
+  workspaces:
+    - name: source
+      description: The workspace containing the source code.
+  steps:
+    - name: build
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+        - --dockerfile=$(workspaces.source.path)/$(params.dockerfile-path)
+        - --destination=$(params.image-name)
+        - --context=$(workspaces.source.path)/$(params.context-path)
+      volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker
+  volumes:
+    - name: docker-config
+      secret:
+        secretName: regcred
